@@ -349,6 +349,18 @@
           "operation_debug": true
         }
       }
+    },
+    {
+      "endpoint": "/api/subscribe/{student_id}/classes/{class_id}",
+      "method": "POST",
+      "backend": [
+        {
+          "url_pattern": "/subscribe/{student_id}/classes/{class_id}",
+          "host": ["http://localhost:5600"]
+        }
+      ],
+      "extra_config": {
+      }
     }
   ]
 }
