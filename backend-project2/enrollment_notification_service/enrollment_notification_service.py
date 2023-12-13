@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from enrollment_notification_service.routes import router 
+from .routes import router 
 
 app = FastAPI()
 

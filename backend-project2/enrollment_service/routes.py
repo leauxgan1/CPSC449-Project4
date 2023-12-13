@@ -11,7 +11,6 @@ dropped = []
 
 FREEZE = False
 MAX_WAITLIST = 3
-database = "enrollment_service/database/database.db"
 dynamodb_client = boto3.client('dynamodb', endpoint_url='http://localhost:5500')
 table_name = 'TitanOnlineEnrollment'
 r = redis.Redis()

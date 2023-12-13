@@ -10,8 +10,6 @@ router = APIRouter()
 dropped = []
 
 FREEZE = False
-MAX_WAITLIST = 3
-database = "enrollment_service/database/database.db"
 dynamodb_client = boto3.client('dynamodb', endpoint_url='http://localhost:5500')
 table_name = 'TitanOnlineEnrollment'
 r = redis.Redis()
@@ -21,12 +19,12 @@ def subscribe_student_to_course(student_id: str, class_id: str):
     # Check if student exists in the database
     student_data = qh.query_student(dynamodb_client, student_id)
     if not student_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No student found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Specified student not found")
     
     # Check if class exists in the database
     class_data = qh.check_class_exists(dynamodb_client, class_id)
     if not class_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No class found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Specified class not found")
     
     subscription_key = f"subscription:{student_id}"
 
@@ -41,7 +39,24 @@ def subscribe_student_to_course(student_id: str, class_id: str):
 
     return {"message": "Studented subscribed to class"}
 
-# DONE: GET currently enrolled classes for a student
+@router.post("/unsubscribe/{student_id}/classes/{class_id}")
+def unsubscribe_student_from_course(student_id: str, class_id):
+    student_data = qh.query_student(dynamodb_client,student_id)
+    
+    if not student_data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Specified student not found")
+    
+    subscription_key = f"subscription:{student_id}"
+
+    if r.exists(subscription_key):
+        id = f"s#{student_id}".encode('uft-8')
+        if id in r.lrange(subscription_key, 0, -1):
+            r.lrem(subscription_key,1, f"c#{class_id}")
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not subscribed to this class's notifications")
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not subscribed to any class notifications")
+
 @router.get("/students/{student_id}/subscriptions", tags=['Student'])
 def get_student_subscriptions(student_id: str):
     # Check if student exists in the database
