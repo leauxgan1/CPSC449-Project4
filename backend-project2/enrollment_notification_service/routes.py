@@ -31,10 +31,11 @@ def subscribe_student_to_course(student_id: str, class_id: str):
         r.rpush(subscription_key, f"c#{class_id}")
         return {"message": "Student added to subscription"}
     else:
-        id = f"s#{student_id}".encode('uft-8')
+        id = f"c#{class_id}".encode('utf-8')
         if id in r.lrange(subscription_key, 0, -1):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Student is already subscribed")
         r.rpush(subscription_key, f"c#{class_id}")
+
 
     return {"message": "Studented subscribed to class"}
 
@@ -48,7 +49,7 @@ def unsubscribe_student_from_course(student_id: str, class_id: str):
     subscription_key = f"subscription:{student_id}"
 
     if r.exists(subscription_key):
-        id = f"s#{student_id}".encode('uft-8')
+        id = f"c#{class_id}".encode('uft-8')
         if id in r.lrange(subscription_key, 0, -1):
             r.lrem(subscription_key,1, f"c#{class_id}")
         else:
@@ -63,7 +64,7 @@ def get_student_subscriptions(student_id: str):
     if not student_data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No student found")
     
-    subscription_key = f"s#{student_id}"
+    subscription_key = f"subscription:{student_id}"
     subscriptions = r.lrange(subscription_key, 0, -1)
 
     if not subscriptions:
