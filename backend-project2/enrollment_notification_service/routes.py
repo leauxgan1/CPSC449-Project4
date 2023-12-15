@@ -11,10 +11,9 @@ dropped = []
 
 FREEZE = False
 dynamodb_client = boto3.client('dynamodb', endpoint_url='http://localhost:5500')
-table_name = 'TitanOnlineEnrollment'
 r = redis.Redis()
 
-@router.post("/subscribe/{student_id}/classes/{class_id}")
+@router.post("/subscriptions/subscribe/{student_id}/{class_id}")
 def subscribe_student_to_course(student_id: str, class_id: str):
     # Check if student exists in the database
     student_data = qh.query_student(dynamodb_client, student_id)
@@ -39,8 +38,8 @@ def subscribe_student_to_course(student_id: str, class_id: str):
 
     return {"message": "Studented subscribed to class"}
 
-@router.post("/unsubscribe/{student_id}/classes/{class_id}")
-def unsubscribe_student_from_course(student_id: str, class_id):
+@router.post("/subscriptions/unsubscribe/{student_id}/{class_id}")
+def unsubscribe_student_from_course(student_id: str, class_id: str):
     student_data = qh.query_student(dynamodb_client,student_id)
     
     if not student_data:
@@ -57,7 +56,7 @@ def unsubscribe_student_from_course(student_id: str, class_id):
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not subscribed to any class notifications")
 
-@router.get("/students/{student_id}/subscriptions", tags=['Student'])
+@router.get("/subscriptions/{student_id}", tags=['Student'])
 def get_student_subscriptions(student_id: str):
     # Check if student exists in the database
     student_data = qh.query_student(dynamodb_client, student_id)

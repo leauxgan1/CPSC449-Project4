@@ -351,11 +351,35 @@
       }
     },
     {
-      "endpoint": "/api/subscribe/{student_id}/classes/{class_id}",
+      "endpoint": "/api/subscriptions/subscribe/{student_id}/{class_id}",
       "method": "POST",
       "backend": [
         {
-          "url_pattern": "/subscribe/{student_id}/classes/{class_id}",
+          "url_pattern": "/subscriptions/subscribe/{student_id}/{class_id}",
+          "host": ["http://localhost:5600"]
+        }
+      ],
+      "extra_config": {
+      }
+    },
+    {
+      "endpoint": "/api/subscriptions/unsubscribe/{student_id}/{class_id}",
+      "method": "POST",
+      "backend": [
+        {
+          "url_pattern": "/subscriptions/unsubscribe/{student_id}/{class_id}",
+          "host": ["http://localhost:5600"]
+        }
+      ],
+      "extra_config": {
+      }
+    },
+    {
+      "endpoint": "/api/subscriptions/{student_id}",
+      "method": "GET",
+      "backend": [
+        {
+          "url_pattern": "/subscriptions/{student_id}",
           "host": ["http://localhost:5600"]
         }
       ],
