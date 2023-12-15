@@ -1,6 +1,7 @@
 import contextlib
 import enrollment_service.query_helper as qh
 import redis
+from enrollment_notification_service.schemas.schemas import Contacts
 
 from fastapi import Depends, HTTPException, APIRouter, Header, status
 import boto3
@@ -14,7 +15,7 @@ dynamodb_client = boto3.client('dynamodb', endpoint_url='http://localhost:5500')
 r = redis.Redis()
 
 @router.post("/subscriptions/subscribe/{student_id}/{class_id}")
-def subscribe_student_to_course(student_id: str, class_id: str):
+def subscribe_student_to_course(student_id: str, class_id: str, user_data : Contacts):
     # Check if student exists in the database
     student_data = qh.query_student(dynamodb_client, student_id)
     if not student_data:
@@ -68,6 +69,8 @@ def get_student_subscriptions(student_id: str):
     
     subscription_key = f"subscription:{student_id}"
     subscriptions = r.lrange(subscription_key, 0, -1)
+
+    print(type(subscriptions))
 
     if not subscriptions:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No subscriptions found")
