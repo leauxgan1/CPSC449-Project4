@@ -29,15 +29,15 @@ def subscribe_student_to_course(student_id: str, class_id: str):
 
     if not r.exists(subscription_key):
         r.rpush(subscription_key, f"c#{class_id}")
-        return {"message": "Student added to subscription"}
+        return {"message": "Student added to subscription for class {}".format(class_id)}
     else:
         id = f"c#{class_id}".encode('utf-8')
         if id in r.lrange(subscription_key, 0, -1):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Student is already subscribed")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Student is already subscribed to class {}".format(class_id))
         r.rpush(subscription_key, f"c#{class_id}")
 
 
-    return {"message": "Studented subscribed to class"}
+    return {"message": "Studented subscribed to class {}".format(class_id)}
 
 @router.post("/subscriptions/unsubscribe/{student_id}/{class_id}")
 def unsubscribe_student_from_course(student_id: str, class_id: str):
@@ -49,13 +49,15 @@ def unsubscribe_student_from_course(student_id: str, class_id: str):
     subscription_key = f"subscription:{student_id}"
 
     if r.exists(subscription_key):
-        id = f"c#{class_id}".encode('uft-8')
+        id = f"c#{class_id}".encode('utf-8')
         if id in r.lrange(subscription_key, 0, -1):
             r.lrem(subscription_key,1, f"c#{class_id}")
         else:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not subscribed to this class's notifications")
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not subscribed to any class notifications")
+    
+    return {"message": "Studented unsubscribed from class {}".format(class_id)}
 
 @router.get("/subscriptions/{student_id}", tags=['Student'])
 def get_student_subscriptions(student_id: str):
