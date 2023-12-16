@@ -5,7 +5,7 @@ import redis
 from fastapi import Depends, HTTPException, APIRouter, Header, status
 import boto3
 from enrollment_service.database.schemas import Class
-from enrollment_service.notification_producer import send_rabbitmq_message
+from enrollment_notification_service.notification_producer import send_rabbitmq_message
 
 router = APIRouter()
 dropped = []

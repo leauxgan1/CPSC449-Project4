@@ -51,36 +51,37 @@ def callback_webhook(ch, method, properties, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def callback_email(ch, method, properties, body):
-    email = get_email(body.decode("utf-8"))
-    body_str = body.decode("utf-8")
-    student_id = body_str[0:body_str.find("_")]
-    class_id = body_str[body_str.find("_")+1:]
+    # email = get_email(body.decode("utf-8"))
+    # body_str = body.decode("utf-8")
+    # student_id = body_str[0:body_str.find("_")]
+    # class_id = body_str[body_str.find("_")+1:]
 
-    # Create EmailMessage object
-    msg = EmailMessage()
-    msg.set_content(f"Hello,\n\nThis is to inform you that {student_id} has subscribed to class {class_id}.")
+    # # Create EmailMessage object
+    # msg = EmailMessage()
+    # msg.set_content(f"Hello,\n\nThis is to inform you that {student_id} has subscribed to class {class_id}.")
 
-    # Set email address to where you want to send the email
-    msg['To'] = email
+    # # Set email address to where you want to send the email
+    # msg['To'] = email
 
-    # Set email subject
-    msg['Subject'] = "Student Subscription Notification"
+    # # Set email subject
+    # msg['Subject'] = "Student Subscription Notification"
 
-    # Set email sender (From address)
-    msg['From'] = "your_email@example.com"  # Replace with sender email address
+    # # Set email sender (From address)
+    # msg['From'] = "your_email@example.com"  # Replace with sender email address
 
-    # Create an SMTP connection and send the email
-    try:
-        server = smtplib.SMTP('localhost', 8025)
-        server.starttls()  # Use TLS
-        server.send_message(msg)
-        server.quit()
-        print(f' [x] Email Sent to {email}')
-    except Exception as e:
-        print(f' [x] Error sending email: {str(e)}')
+    # # Create an SMTP connection and send the email
+    # try:
+    #     server = smtplib.SMTP('localhost', 8025)
+    #     server.starttls()  # Use TLS
+    #     server.send_message(msg)
+    #     server.quit()
+    #     print(f' [x] Email Sent to {email}')
+    # except Exception as e:
+    #     print(f' [x] Error sending email: {str(e)}')
 
-    # Acknowledge the message
-    ch.basic_ack(delivery_tag=method.delivery_tag)
+    # # Acknowledge the message
+    # ch.basic_ack(delivery_tag=method.delivery_tag)
+    pass
 
 
 channel.basic_consume(queue=queue_name_webhook, on_message_callback=callback_webhook)
