@@ -354,6 +354,9 @@ def instructor_drop_class(instructor_id: str, class_id: str, student_id: str):
             r.lrem(f"waitlist:{class_id}", 0, f"s#{waitlist_data[0]}")
             # Fetch the updated class data from the databas
             updated_class_data = qh.query_class(dynamodb_client, class_id)
+            ##rabbitmq needs to go here too for autoenroll
+
+
             return {"message": "Student dropped from class and first student on waitlist enrolled", "Class": updated_class_data["Detail"]}
     return {"message": "Student dropped from class"}
 
