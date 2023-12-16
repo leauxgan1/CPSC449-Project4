@@ -1,5 +1,6 @@
 import pika
 import redis
+import httpx
 
 r = redis.Redis()
 
@@ -33,6 +34,9 @@ def get_email(message: str):
 
 def callback_webhook(ch, method, properties, body):
     webhook_url = get_webhook(body.decode("utf-8"))
+    web = httpx.post(usr_url, data={'message': 'Hello, world!'})
+    print(web.text)
+
 
 def callback_email(ch, method, properties, body):
     email = get_email(body.decode("utf-8"))
