@@ -1,10 +1,12 @@
 import contextlib
 import enrollment_service.query_helper as qh
 import redis
+import pika
 
 from fastapi import Depends, HTTPException, APIRouter, Header, status
 import boto3
 from enrollment_service.database.schemas import Class
+from enrollment_service.notification_helper import send_rabbitmq_message
 
 router = APIRouter()
 dropped = []
@@ -170,6 +172,11 @@ def drop_student_from_class(student_id: str, class_id: str):
             r.lrem(f"waitlist:{class_id}", 0, f"s#{waitlist_data[0]}")
             # Fetch the updated class data from the databas
             updated_class_data = qh.query_class(dynamodb_client, class_id)
+
+            ##rabbitmq section
+            message=f"Student {waitlist_data[0]} has been enrolled in class {class_id}"
+            send_rabbitmq_message('enrollment_exchange', mesSsage)
+
             return {"message": "Student dropped from class and first student on waitlist enrolled", "Class": updated_class_data["Detail"]}
     return {"message": "Student dropped from class"}
     
