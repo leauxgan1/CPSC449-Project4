@@ -5,6 +5,7 @@ import redis
 from fastapi import Depends, HTTPException, APIRouter, Header, status
 import boto3
 from enrollment_service.database.schemas import Class
+from enrollment_notification_service.notification_producer import send_rabbitmq_message
 
 router = APIRouter()
 dropped = []
@@ -41,6 +42,9 @@ def get_available_classes(student_id: str):
         # Add the item to filtered_data only if the waitlist is not full
         if waitlist_length < MAX_WAITLIST or r.exists(waitlist_key) == 0:
             filtered_class_data.append(item)
+
+    message = f"{student_id}_0001"
+    send_rabbitmq_message(message)
 
     return {"Classes" : filtered_class_data}
 
@@ -170,6 +174,12 @@ def drop_student_from_class(student_id: str, class_id: str):
             r.lrem(f"waitlist:{class_id}", 0, f"s#{waitlist_data[0]}")
             # Fetch the updated class data from the databas
             updated_class_data = qh.query_class(dynamodb_client, class_id)
+
+            ##rabbitmq section
+            # message=f"{student_id}:{class_id}"
+            message = f"{student_id}_{class_id}"
+            send_rabbitmq_message(message)
+
             return {"message": "Student dropped from class and first student on waitlist enrolled", "Class": updated_class_data["Detail"]}
     return {"message": "Student dropped from class"}
     
@@ -347,6 +357,12 @@ def instructor_drop_class(instructor_id: str, class_id: str, student_id: str):
             r.lrem(f"waitlist:{class_id}", 0, f"s#{waitlist_data[0]}")
             # Fetch the updated class data from the databas
             updated_class_data = qh.query_class(dynamodb_client, class_id)
+            ##rabbitmq section
+            # message=f"{student_id}:{class_id}"
+            message = f"{student_id}_{class_id}"
+            send_rabbitmq_message(message)
+
+
             return {"message": "Student dropped from class and first student on waitlist enrolled", "Class": updated_class_data["Detail"]}
     return {"message": "Student dropped from class"}
 
