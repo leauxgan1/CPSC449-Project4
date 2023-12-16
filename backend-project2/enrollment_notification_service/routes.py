@@ -27,9 +27,13 @@ def subscribe_student_to_course(student_id: str, class_id: str, user_data : Cont
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Specified class not found")
     
     subscription_key = f"subscription:{student_id}"
+    webhood_key = f"webhook_{student_id}_{class_id}"
+    email_key = f"email_{student_id}_{class_id}"
 
     if not r.exists(subscription_key):
         r.rpush(subscription_key, f"c#{class_id}")
+        r.rpush(webhood_key, f"w#{user_data.webhook}")
+        r.rpush(email_key, f"e#{user_data.email}")
         return {"message": "Student added to subscription for class {}".format(class_id)}
     else:
         id = f"c#{class_id}".encode('utf-8')
@@ -48,6 +52,8 @@ def unsubscribe_student_from_course(student_id: str, class_id: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Specified student not found")
     
     subscription_key = f"subscription:{student_id}"
+    webhood_key = f"webhook_{student_id}_{class_id}"
+    email_key = f"email_{student_id}_{class_id}"
 
     if r.exists(subscription_key):
         id = f"c#{class_id}".encode('utf-8')
@@ -57,6 +63,12 @@ def unsubscribe_student_from_course(student_id: str, class_id: str):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not subscribed to this class's notifications")
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not subscribed to any class notifications")
+
+    if r.exists(webhood_key):
+        r.delete(webhood_key)
+        
+    if r.exists(email_key):
+        r.delete(email_key)
     
     return {"message": "Studented unsubscribed from class {}".format(class_id)}
 
