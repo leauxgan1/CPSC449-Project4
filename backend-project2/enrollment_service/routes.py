@@ -5,7 +5,7 @@ import redis
 from fastapi import Depends, HTTPException, APIRouter, Header, status
 import boto3
 from enrollment_service.database.schemas import Class
-from enrollment_service.notification_helper import send_rabbitmq_message
+from enrollment_service.notification_producer import send_rabbitmq_message
 
 router = APIRouter()
 dropped = []
@@ -42,11 +42,6 @@ def get_available_classes(student_id: str):
         # Add the item to filtered_data only if the waitlist is not full
         if waitlist_length < MAX_WAITLIST or r.exists(waitlist_key) == 0:
             filtered_class_data.append(item)
-
-    class_id = 1000
-
-    message=f"{student_id}:{class_id}"
-    send_rabbitmq_message("waitlist_exchange", message)
 
     return {"Classes" : filtered_class_data}
 
