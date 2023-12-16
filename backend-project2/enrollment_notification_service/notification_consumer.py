@@ -27,12 +27,18 @@ print(' [*] Waiting for logs. To exit press CTRL+C')
 def get_webhook(message: str):
     webhood_key = "webhook_" + message
     subscriptions = r.lrange(webhood_key, 0, -1)
-    return (subscriptions[0]).decode("utf-8")[2:]
+    if subscriptions and len(subscriptions) > 2:
+        return (subscriptions[0]).decode("utf-8")[2:]
+    else:
+        return None
 
 def get_email(message: str):
     email_key = "email_" + message
     subscriptions = r.lrange(email_key, 0, -1)
-    return (subscriptions[0]).decode("utf-8")[2:]
+    if subscriptions and len(subscriptions) > 2:
+        return (subscriptions[0]).decode("utf-8")[2:]
+    else:
+        return None
 
 def callback_webhook(ch, method, properties, body):
     webhook_url = get_webhook(body.decode("utf-8"))
