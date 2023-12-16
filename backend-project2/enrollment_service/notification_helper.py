@@ -47,7 +47,7 @@ def consume_rabbitmq_email(exchange_name):
 
 
 def consume_rabbitmq_httpx(exchange_name):
-
+    pass
 
 #http://localhost:5500
 #r = httpx.post('https://httpbin.org/post', data={'key': 'value'})

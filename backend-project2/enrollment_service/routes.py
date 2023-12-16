@@ -43,6 +43,11 @@ def get_available_classes(student_id: str):
         if waitlist_length < MAX_WAITLIST or r.exists(waitlist_key) == 0:
             filtered_class_data.append(item)
 
+    class_id = 1000
+
+    message=f"{student_id}:{class_id}"
+    send_rabbitmq_message("waitlist_exchange", message)
+
     return {"Classes" : filtered_class_data}
 
 
