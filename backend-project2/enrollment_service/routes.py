@@ -1,8 +1,9 @@
 import contextlib
 import enrollment_service.query_helper as qh
 import redis
+import datetime
 
-from fastapi import Depends, HTTPException, APIRouter, Header, status
+from fastapi import Depends, HTTPException, APIRouter, Request, status
 import boto3
 from enrollment_service.database.schemas import Class
 from enrollment_notification_service.notification_producer import send_rabbitmq_message
@@ -121,7 +122,7 @@ def enroll_student_in_class(student_id: str, class_id: str):
     if not update_finished:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update class enrollment")
     
-    # Fetch the updated class data from the databas
+    # Fetch the updated class data from the database
     updated_class_data = qh.query_class(dynamodb_client, class_id)
 
     return updated_class_data["Detail"]
@@ -186,10 +187,20 @@ def drop_student_from_class(student_id: str, class_id: str):
 
 #==========================================wait list========================================== 
 
-
-# DONE: Get wait list position for a student in a class
+# DONE: Get waiting list position for a student in a class
+# Reduces traffic with Last-Modified: / If-Modified-Since: headers.
 @router.get("/students/{student_id}/waitlist/{class_id}", tags=['Waitlist'], summary="Get waitlist position for a student in a class")
-def view_waiting_list(student_id: str, class_id: str):
+def view_waiting_list(req: Request, student_id: str, class_id: str):
+    cached_wl_position_key = r.get(f"waitlist:{class_id}:{student_id}")
+    if r.exists(cached_wl_position_key):
+        cached_wl_position = r.lrange(cached_wl_position_key, 0, -1)
+        if len(cached_wl_position) > 0:
+            modified_at = cached_wl_position[0].modified_at
+            if req.headers.get("If-Modified-Since") == modified_at:
+                return status.HTTP_304_NOT_MODIFIED
+            else:
+                return {"Waitlist Position": cached_wl_position[0].position}
+    
     # check if student exists in the database
     student_data = qh.query_student(dynamodb_client, student_id)
     if not student_data:
@@ -210,7 +221,16 @@ def view_waiting_list(student_id: str, class_id: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not on waitlist")
     # Get student's position on waitlist
     position = waitlist_data.index(id) + 1
-    return {"Waitlist Position": position}
+
+    # Cache the position
+    modified_at  = datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT")
+    r.rpush(cached_wl_position_key, { "position": position, "modified_at": modified_at })
+
+    # Set to expire after 10 seconds.
+    r.expire(cached_wl_position_key, 10)
+
+    # Return the position
+    return {"Waitlist Position": position, "headers": {"Last-Modified": modified_at}}
 
 # DONE: remove a student from a waiting list
 @router.delete("/students/{student_id}/waitlist/{class_id}", tags=['Waitlist'], summary="Remove a student from a waiting list")
