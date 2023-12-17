@@ -1,9 +1,10 @@
 import contextlib
 import enrollment_service.query_helper as qh
 import redis
+import time
 import datetime
 
-from fastapi import Depends, HTTPException, APIRouter, Request, status
+from fastapi import Depends, HTTPException, APIRouter, Header, status, Request
 import boto3
 from enrollment_service.database.schemas import Class
 from enrollment_notification_service.notification_producer import send_rabbitmq_message
@@ -91,9 +92,14 @@ def enroll_student_in_class(student_id: str, class_id: str):
         print("Class is full")
         # Waitlist handling
         waitlist_key = f"waitlist:{class_id}"
+        now = datetime.datetime().now()
+        time_str = now.date() + now.strftime('%H%M%S')
+        waitlist_modification_key = f"waitlist_modified:{class_id}"
         # check if waitlist exists, add to wailist Redis with key waitlist:class_id, value s#student_id
         if not r.exists(waitlist_key):
             r.rpush(waitlist_key, f"s#{student_id}")
+            r.set(waitlist_modification_key, time_str)
+            r.expire(waitlist_modification_key, 10)
             return {"message": "Student added to waitlist"}
         else:
             # check if student is already on waitlist
@@ -103,6 +109,8 @@ def enroll_student_in_class(student_id: str, class_id: str):
             # check if adding student to waitlist will exceed max waitlist
             if r.llen(waitlist_key) < MAX_WAITLIST:
                 r.rpush(waitlist_key, f"s#{student_id}")
+                r.set(waitlist_modification_key, time_str)
+                r.expire(waitlist_modification_key, 10)
                 return {"message": "Student added to waitlist"}
             else:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unable to add student to waitlist due to already having max number of waitlists")
@@ -119,7 +127,7 @@ def enroll_student_in_class(student_id: str, class_id: str):
     if not update_finished:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update class enrollment")
     
-    # Fetch the updated class data from the database
+    # Fetch the updated class data from the databas
     updated_class_data = qh.query_class(dynamodb_client, class_id)
 
     return updated_class_data["Detail"]
@@ -170,6 +178,11 @@ def drop_student_from_class(student_id: str, class_id: str):
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update class enrollment")
             # Remove student from waitlist
             r.lrem(f"waitlist:{class_id}", 0, f"s#{waitlist_data[0]}")
+            now = datetime.datetime().now()
+            time_str = now.date() + now.strftime('%H%M%S')
+            waitlist_modification_key = f"waitlist_modified:{class_id}"
+            r.set(waitlist_modification_key, time_str)
+            r.expire(waitlist_modification_key, 10)
             # Fetch the updated class data from the databas
             updated_class_data = qh.query_class(dynamodb_client, class_id)
 
@@ -184,19 +197,18 @@ def drop_student_from_class(student_id: str, class_id: str):
 
 #==========================================wait list========================================== 
 
-# DONE: Get waiting list position for a student in a class
-# Reduces traffic with Last-Modified: / If-Modified-Since: headers.
+
+# DONE: Get wait list position for a student in a class
 @router.get("/students/{student_id}/waitlist/{class_id}", tags=['Waitlist'], summary="Get waitlist position for a student in a class")
-def view_waiting_list(req: Request, student_id: str, class_id: str):
-    cached_wl_position_key = f"waitlist:{class_id}"
+def view_waiting_list(req: Request,student_id: str, class_id: str):
+    cached_wl_position_key = f"waitlist:{class_id}:{student_id}"
     if r.exists(cached_wl_position_key):
         cached_wl_position = r.lrange(cached_wl_position_key, 0, -1)
         if len(cached_wl_position) > 0:
-            pass
-            #modified_at = cached_wl_position[0].modified_at
-            # if req.headers.get("If-Modified-Since") == modified_at:
-            #     return status.HTTP_304_NOT_MODIFIED
-
+            print(cached_wl_position[0])
+            modified_at = cached_wl_position[0]["modified_at"]
+            if req.headers.get("If-Modified-Since") == modified_at:
+                return status.HTTP_304_NOT_MODIFIED
     # check if student exists in the database
     student_data = qh.query_student(dynamodb_client, student_id)
     if not student_data:
@@ -217,16 +229,6 @@ def view_waiting_list(req: Request, student_id: str, class_id: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not on waitlist")
     # Get student's position on waitlist
     position = waitlist_data.index(id) + 1
-
-    # Cache the position
-    # modified_at  = datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT")
-    # r.rpush(cached_wl_position_key, { "position": position, "modified_at": modified_at })
-
-    # # Set to expire after 10 seconds.
-    # r.expire(cached_wl_position_key, 10)
-
-    # Return the position
-    # return {"Waitlist Position": position, "headers": {"Last-Modified": modified_at}}
     return {"Waitlist Position": position}
 
 # DONE: remove a student from a waiting list
@@ -252,6 +254,11 @@ def remove_from_waitlist(student_id: str, class_id: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not on waitlist")
     # Remove student from waitlist
     r.lrem(waitlist_key, 0, id)
+    now = datetime.datetime().now()
+    time_str = now.date() + now.strftime('%H%M%S')
+    waitlist_modification_key = f"waitlist_modified:{class_id}"
+    r.set(waitlist_modification_key, time_str)
+    r.expire(waitlist_modification_key, 10)
     return {"message": "Student removed from the waiting list"}
 
 # DONE: Get waitlist for a class
@@ -372,6 +379,11 @@ def instructor_drop_class(instructor_id: str, class_id: str, student_id: str):
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to update class enrollment")
             # Remove student from waitlist
             r.lrem(f"waitlist:{class_id}", 0, f"s#{waitlist_data[0]}")
+            now = datetime.datetime().now()
+            time_str = now.date() + now.strftime('%H%M%S')
+            waitlist_modification_key = f"waitlist_modified:{class_id}"
+            r.set(waitlist_modification_key, time_str)
+            r.expire(waitlist_modification_key, 10)
             # Fetch the updated class data from the databas
             updated_class_data = qh.query_class(dynamodb_client, class_id)
             ##rabbitmq section
