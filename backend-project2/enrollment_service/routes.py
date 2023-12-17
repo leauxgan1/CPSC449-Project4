@@ -43,7 +43,7 @@ def get_available_classes(student_id: str):
         # Add the item to filtered_data only if the waitlist is not full
         if waitlist_length < MAX_WAITLIST or r.exists(waitlist_key) == 0:
             filtered_class_data.append(item)
-
+    #uncomment to easily access rabbitmq testing
     message = f"{student_id}_0001"
     send_rabbitmq_message(message)
 
