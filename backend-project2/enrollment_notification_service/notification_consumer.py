@@ -45,19 +45,22 @@ def get_email(message: str):
 
 def callback_webhook(ch, method, properties, body):
     webhook_url = get_webhook(body.decode("utf-8"))
-    body_str = body.decode("utf-8")
-    student_id = body_str[0:body_str.find("_")]
-    class_id = body_str[body_str.find("_")+1:]
-    try:
-        response = httpx.post(webhook_url, data={'message': f'{student_id} was successfully enrolled into class {class_id}'})
-        response.raise_for_status()
-        print(response.status_code)
-    except httpx.HTTPError as exc:
-        ch.basic_nack(delivery_tag=method.delivery_tag)
-        print(f"HTTP Exception for {exc.request.url} - {exc}")
-        return
+    if webhook_url:
+        body_str = body.decode("utf-8")
+        student_id = body_str[0:body_str.find("_")]
+        class_id = body_str[body_str.find("_")+1:]
+        try:
+            response = httpx.post(webhook_url, data={'message': f'{student_id} was successfully enrolled into class {class_id}'})
+            response.raise_for_status()
+            print(response.status_code)
+        except httpx.HTTPError as exc:
+            ch.basic_nack(delivery_tag=method.delivery_tag)
+            print(f"HTTP Exception for {exc.request.url} - {exc}")
+            return
 
-    ch.basic_ack(delivery_tag=method.delivery_tag)
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+    else:
+        return
 
 def callback_email(ch, method, properties, body):
     email = get_email(body.decode("utf-8"))
