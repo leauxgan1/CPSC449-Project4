@@ -88,9 +88,13 @@ def callback_email(ch, method, properties, body):
     message.attach(MIMEText(body, "plain"))
 
     with smtplib.SMTP(server, port_number) as server:
-        server.starttls()
-        server.login(username_b64, password_b64)
-        server.sendmail(sender_email, receiver_email, message.as_string())
+        try:
+            server.starttls()
+            server.login(username_b64, password_b64)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+        except Exception as e:
+            print(f'[x] Error sending email:{str(e)}')
+            return 
 
     print("Email sent successfully!")
 
